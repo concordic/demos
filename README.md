@@ -6,8 +6,8 @@ This is a development repository for demo applications, both with and without Co
 
 Different demo applications are in different branches. For example, the `renderer` demo
 built on Vulkan would be in the `renderer.vulkan` branch. Features for each demo are 
-slash separated, e.g. `deferred` feature of `renderer.vulkan` would be in the 
-`renderer.vulkan/deferred` branch.
+dot (`.`) separated, e.g. `deferred` feature of `renderer.vulkan` would be in the
+`renderer.vulkan.deferred` branch.
 
 Once a demo is complete, restructure the hierarchy for demo code to be in `src/<demo>/<api>`,
 where `<demo>` is the demo name and `<api>` is the GPU API in use, then pull request to main.
