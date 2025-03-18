@@ -11,6 +11,6 @@ would be in the `renderer` branch. Features for each demo are slash separated, e
 Once a demo is complete, restructure the hierarchy for demo code to be in `src/<demo>/<api>`,
 where `<demo>` is the demo name and `<api>` is the GPU api in use, then pull request to main.
 
-When creating a new feature branch, branch off the `template` branch, which contains the
+When creating a new feature branch, branch off this branch, which contains the
 original organizational template. Make sure to modify the `README.md` to list primary 
 collaborators.
