@@ -39,7 +39,9 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("glfw3");
     exe.addIncludePath(b.path("include"));
     switch (builtin.target.os.tag) {
-        .windows => {},
+        .windows => {
+            b.installFile("lib/glfw3.dll", "bin/glfw3.dll");
+        },
         .linux => {},
         .macos => {
             exe.linkFramework("Cocoa");
