@@ -37,6 +37,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibC();
     exe.addLibraryPath(b.path("lib"));
     exe.linkSystemLibrary("glfw3");
+    exe.linkSystemLibrary("vulkan");
     exe.addIncludePath(b.path("include"));
     switch (builtin.target.os.tag) {
         .windows => {
