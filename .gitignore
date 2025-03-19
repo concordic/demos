@@ -74,3 +74,9 @@ node_modules
 
 # Build test temp output
 /build_tests/gen*
+
+.zig-cache/**
+zig-out/**
+lib/**
+include/**
+compile_flags.txt
