@@ -35,12 +35,16 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.linkLibC();
-    exe.addObjectFile(b.path("lib/libglfw3.a"));
     exe.addIncludePath(b.path("include"));
     switch (builtin.target.os.tag) {
-        .windows => {},
+        .windows => {
+            exe.addLibraryPath(b.path("lib"));
+            exe.linkSystemLibrary("glfw3");
+            b.installFile("lib/glfw3.dll", "bin/glfw3.dll");
+        },
         .linux => {},
         .macos => {
+            exe.addObjectFile(b.path("lib/libglfw3.a"));
             exe.linkFramework("Cocoa");
             exe.linkFramework("OpenGL");
             exe.linkFramework("IOKit");
