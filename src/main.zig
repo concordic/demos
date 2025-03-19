@@ -51,20 +51,12 @@ pub const App = struct {
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         const allocator = gpa.allocator();
         const app_info: vk.VkApplicationInfo = .{ .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO, .pApplicationName = "Hello Triangle", .applicationVersion = vk.VK_MAKE_VERSION(1, 0, 0), .pEngineName = "No Engine", .engineVersion = vk.VK_MAKE_VERSION(1, 0, 0), .apiVersion = vk.VK_API_VERSION_1_0 };
-        var glfw_extension_count: u32 = 0;
-        var glfw_extensions: [*c][*c]const u8 = undefined;
-        glfw_extensions = glfw.glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-        std.debug.print("{}\n", .{glfw_extension_count});
-        const ext_mem = try allocator.alloc([*c]const u8, glfw_extension_count + 1);
-        const new_extensions: [*c][*c]const u8 = ext_mem.ptr;
-        for (0..glfw_extension_count) |idx| {
-            ext_mem[idx] = glfw_extensions[idx];
-        }
+        const ext_mem = try allocator.alloc([*c]const u8, 1);
         const ext_name = vk.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
         std.debug.print("{s}\n", .{ext_name});
-        ext_mem[glfw_extension_count] = ext_name;
-        var create_info: vk.VkInstanceCreateInfo = .{ .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, .pApplicationInfo = &app_info, .enabledExtensionCount = glfw_extension_count + 1, .ppEnabledExtensionNames = new_extensions, .enabledLayerCount = 0 };
-        create_info.flags |= vk.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+        ext_mem[0] = ext_name;
+        var create_info: vk.VkInstanceCreateInfo = .{ .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, .pApplicationInfo = &app_info, .enabledExtensionCount = 1, .ppEnabledExtensionNames = ext_mem.ptr, .enabledLayerCount = 0 };
+        create_info.flags = create_info.flags | vk.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
         const result: vk.VkResult = vk.vkCreateInstance(&create_info, null, &app.instance);
         if (result != vk.VK_SUCCESS) {
             std.debug.print("{}\n", .{result});
