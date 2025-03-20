@@ -28,18 +28,30 @@ pub const App = struct {
             return GlfwError.glfwInitFailed;
         }
         glfw.glfwWindowHint(glfw.GLFW_CLIENT_API, glfw.GLFW_NO_API);
-        app.window = glfw.glfwCreateWindow(800, 600, "Vulkan", null, null);
+        app.window = glfw.glfwCreateWindow(
+            800, 600, 
+            "Vulkan", null, null
+        );
     }
 
     fn initVulkan(app: *App) !void {
         app.instance = undefined;
         const version: [3]u32 = .{ 1, 0, 0 };
-        var extensions: [1][]const u8 = .{vk.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME[0..]};
+        var extensions: [1][]const u8 = .{
+            vk.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME[0..]
+        };
         const khronos_layer = "VK_LAYER_KHRONOS_validation";
-        var validations: [1][]const u8 = .{khronos_layer[0..]};
+        var validations: [1][]const u8 = .{
+            khronos_layer[0..]
+        };
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         const allocator = gpa.allocator();
-        try app.instance.init(allocator, "Hello", version[0..], extensions[0..], vk.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR, validations[0..]);
+        try app.instance.init(
+            allocator, 
+            "Hello", version[0..], 
+            extensions[0..], vk.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR, 
+            validations[0..]
+        );
     }
 
     fn mainLoop(app: *App) void {
