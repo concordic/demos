@@ -1,4 +1,5 @@
 const std = @import("std");
+const vulkan = @import("vulkan.zig");
 const glfw = @cImport({
     @cDefine("GLFW_INCLUDE_VULKAN", "");
     @cInclude("GLFW/glfw3.h");
@@ -9,28 +10,15 @@ const vk = @cImport({
 });
 
 pub const GlfwError = error{glfwInitFailed};
-pub const VkError = error{vkInstanceCreateFailed};
-
-fn print_extensions(exts: [*c][*c]const u8, len: usize) !void {
-    const stdout = std.io.getStdOut().writer();
-    for (0..len) |i| {
-        const name = exts[i];
-        // try stdout.print("{s}", .{name});
-        try stdout.print("{c}", .{name.*});
-        try stdout.print("\n", .{});
-    }
-}
 
 pub const App = struct {
     window: ?*glfw.GLFWwindow,
-    instance: vk.VkInstance,
+    instance: vulkan.Instance,
 
     fn run(app: *App) !void {
         try app.initWindow();
         defer app.cleanup();
-
         try app.initVulkan();
-
         app.mainLoop();
     }
 
@@ -44,24 +32,14 @@ pub const App = struct {
     }
 
     fn initVulkan(app: *App) !void {
-        try app.createInstance();
-    }
-
-    fn createInstance(app: *App) !void {
+        app.instance = undefined;
+        const version: [3]u32 = .{ 1, 0, 0 };
+        var extensions: [1][]const u8 = .{vk.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME[0..]};
+        const khronos_layer = "VK_LAYER_KHRONOS_validation";
+        var validations: [1][]const u8 = .{khronos_layer[0..]};
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         const allocator = gpa.allocator();
-        const app_info: vk.VkApplicationInfo = .{ .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO, .pApplicationName = "Hello Triangle", .applicationVersion = vk.VK_MAKE_VERSION(1, 0, 0), .pEngineName = "No Engine", .engineVersion = vk.VK_MAKE_VERSION(1, 0, 0), .apiVersion = vk.VK_API_VERSION_1_0 };
-        const ext_mem = try allocator.alloc([*c]const u8, 1);
-        const ext_name = vk.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
-        std.debug.print("{s}\n", .{ext_name});
-        ext_mem[0] = ext_name;
-        var create_info: vk.VkInstanceCreateInfo = .{ .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, .pApplicationInfo = &app_info, .enabledExtensionCount = 1, .ppEnabledExtensionNames = ext_mem.ptr, .enabledLayerCount = 0 };
-        create_info.flags = create_info.flags | vk.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-        const result: vk.VkResult = vk.vkCreateInstance(&create_info, null, &app.instance);
-        if (result != vk.VK_SUCCESS) {
-            std.debug.print("{}\n", .{result});
-            return VkError.vkInstanceCreateFailed;
-        }
+        try app.instance.init(allocator, "Hello", version[0..], extensions[0..], vk.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR, validations[0..]);
     }
 
     fn mainLoop(app: *App) void {
@@ -71,6 +49,7 @@ pub const App = struct {
     }
 
     fn cleanup(app: *App) void {
+        app.instance.deinit();
         glfw.glfwDestroyWindow(app.window);
         glfw.glfwTerminate();
     }
