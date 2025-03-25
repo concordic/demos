@@ -1,24 +1,24 @@
 const std = @import("std");
-const vulkan = @import("vulkan.zig");
+const instance = @import("instance.zig");
+const device = @import("device.zig");
 const glfw = @cImport({
     @cDefine("GLFW_INCLUDE_VULKAN", "");
     @cInclude("GLFW/glfw3.h");
-});
-const vk = @cImport({
-    @cDefine("GLFW_INCLUDE_VULKAN", "");
-    @cInclude("vulkan/vulkan.h");
 });
 
 pub const GlfwError = error{glfwInitFailed};
 
 pub const App = struct {
     window: ?*glfw.GLFWwindow,
-    instance: vulkan.Instance,
+    instance: instance.Instance,
+    device: device.Device,
 
     fn run(app: *App) !void {
         try app.initWindow();
         defer app.cleanup();
         try app.initVulkan();
+        defer app.instance.deinit();
+        defer app.device.deinit();
         app.mainLoop();
     }
 
@@ -37,21 +37,25 @@ pub const App = struct {
     fn initVulkan(app: *App) !void {
         app.instance = undefined;
         const version: [3]u32 = .{ 1, 0, 0 };
+        const portability_name = "VK_KHR_portability_enumeration";
         var extensions: [1][]const u8 = .{
-            vk.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME[0..]
+            portability_name[0..]
         };
         const khronos_layer = "VK_LAYER_KHRONOS_validation";
         var validations: [1][]const u8 = .{
             khronos_layer[0..]
         };
+        const flags = 1;
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         const allocator = gpa.allocator();
         try app.instance.init(
             allocator, 
             "Hello", version[0..], 
-            extensions[0..], vk.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR, 
+            extensions[0..], flags, 
             validations[0..]
         );
+        app.device = undefined;
+        try app.device.init(allocator, &app.instance);
     }
 
     fn mainLoop(app: *App) void {
@@ -61,7 +65,6 @@ pub const App = struct {
     }
 
     fn cleanup(app: *App) void {
-        app.instance.deinit();
         glfw.glfwDestroyWindow(app.window);
         glfw.glfwTerminate();
     }

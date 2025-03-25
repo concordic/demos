@@ -4,7 +4,10 @@ const vk = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
 
-pub const VkError = error{ vkInstanceCreateFailed, vkValidationUnsupported };
+pub const VkInstanceError = error{ 
+    vkInstanceCreateFailed, 
+    vkValidationUnsupported,
+};
 
 pub const Instance = struct {
     instance: vk.VkInstance,
@@ -19,29 +22,31 @@ pub const Instance = struct {
     validation_layers: [][*:0]const u8,
     enable_validate: bool = true,
 
-    pub fn init(inst: *Instance, alloc: std.mem.Allocator, name: []const u8, version: []const u32, extensions: [][]const u8, extension_flags: u32, validations: [][]const u8) !void {
+    pub fn init(inst: *Instance, alloc: std.mem.Allocator, 
+                name: []const u8, version: []const u32, 
+                extensions: [][]const u8, extension_flags: u32, 
+                validations: [][]const u8) !void {
+
         inst.allocator = alloc;
+        // set c strings and vars
         inst.app_name = try std.fmt.allocPrintZ(inst.allocator, "{s}", .{name});
         inst.app_version = version;
-
         inst.create_flags = extension_flags;
         inst.extension_layers = try inst.allocator.alloc([*:0]const u8, extensions.len);
         for (extensions, 0..) |extension, idx| {
             inst.extension_layers[idx] = try std.fmt.allocPrintZ(inst.allocator, "{s}", .{extension});
         }
-
         inst.validation_layers = try inst.allocator.alloc([*:0]const u8, validations.len);
         for (validations, 0..) |validation, idx| {
             inst.validation_layers[idx] = try std.fmt.allocPrintZ(inst.allocator, "{s}", .{validation});
         }
-
-        var app_info: vk.VkApplicationInfo = try inst.getAppInfo();
-        var create_info: vk.VkInstanceCreateInfo = try inst.getCreateInfo(&app_info);
-
+        // create instance
+        var app_info: vk.VkApplicationInfo = try inst.buildAppInfo();
+        var create_info: vk.VkInstanceCreateInfo = try inst.buildCreateInfo(&app_info);
         var err: vk.VkResult = vk.VK_SUCCESS;
         err = vk.vkCreateInstance(&create_info, null, &inst.instance);
         if (err != vk.VK_SUCCESS) {
-            return VkError.vkInstanceCreateFailed;
+            return VkInstanceError.vkInstanceCreateFailed;
         }
     }
 
@@ -49,7 +54,7 @@ pub const Instance = struct {
         vk.vkDestroyInstance(inst.instance, null);
     }
 
-    fn getAppInfo(inst: *Instance) !vk.VkApplicationInfo {
+    fn buildAppInfo(inst: *Instance) !vk.VkApplicationInfo {
         const app_info: vk.VkApplicationInfo = .{ 
             .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO, 
             .pApplicationName = inst.app_name[0..], 
@@ -63,9 +68,9 @@ pub const Instance = struct {
         return app_info;
     }
 
-    fn getCreateInfo(inst: *Instance, app_info: *vk.VkApplicationInfo) !vk.VkInstanceCreateInfo {
-        if (inst.enable_validate and !try inst.checkValidationLayer()) {
-            return VkError.vkValidationUnsupported;
+    fn buildCreateInfo(inst: *Instance, app_info: *vk.VkApplicationInfo) !vk.VkInstanceCreateInfo {
+        if (inst.enable_validate and !try inst.ensureValidationsAvailable()) {
+            return VkInstanceError.vkValidationUnsupported;
         }
         const create_info: vk.VkInstanceCreateInfo = .{ 
             .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, 
@@ -85,24 +90,25 @@ pub const Instance = struct {
         return create_info;
     }
 
-    fn checkValidationLayer(inst: *Instance) !bool {
+    fn ensureValidationsAvailable(inst: *Instance) !bool {
         const str = @cImport({
             @cInclude("string.h");
         });
-
         var err: vk.VkResult = vk.VK_SUCCESS;
+
+        // enumerate supported validations
         var layer_count: u32 = undefined;
         err = vk.vkEnumerateInstanceLayerProperties(&layer_count, null);
         if (err != vk.VK_SUCCESS) {
-            return VkError.vkValidationUnsupported;
+            return VkInstanceError.vkValidationUnsupported;
         }
-
         const availables: []vk.VkLayerProperties = try inst.allocator.alloc(vk.VkLayerProperties, layer_count);
         err = vk.vkEnumerateInstanceLayerProperties(&layer_count, availables.ptr);
         if (err != vk.VK_SUCCESS) {
-            return VkError.vkValidationUnsupported;
+            return VkInstanceError.vkValidationUnsupported;
         }
 
+        // compare available validations to target validations
         for (availables) |available| {
             var layer_found: bool = false;
             for (inst.validation_layers) |validation| {
@@ -115,6 +121,9 @@ pub const Instance = struct {
                 return false;
             }
         }
+        // if no layers are not present in available, all layers are available
         return true;
     }
 };
+
+
