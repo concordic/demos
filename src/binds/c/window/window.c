@@ -1,7 +1,7 @@
 #include <assert.h>
-#include "window.h"
+#include <GLFW/glfw3.h>
 
-GLFWwindow* initWindow(int width, int height, const char* name) {
+GLFWwindow* windowInit(int width, int height, const char* name) {
 	assert(name);
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -14,7 +14,7 @@ GLFWwindow* initWindow(int width, int height, const char* name) {
 	return window;
 }
 
-void updateWindow(GLFWwindow* window, int (*loop)()) {
+void windowUpdate(GLFWwindow* window, int (*loop)()) {
 	assert(window);
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -23,7 +23,7 @@ void updateWindow(GLFWwindow* window, int (*loop)()) {
 	}
 }
 
-void deinitWindow(GLFWwindow* window) {
+void windowDeinit(GLFWwindow* window) {
 	assert(window);
 	glfwDestroyWindow(window);
 	glfwTerminate();
