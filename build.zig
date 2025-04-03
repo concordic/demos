@@ -8,10 +8,15 @@ pub fn build(b: *std.Build) void {
             .target = b.graph.host
         }
     );
-    exe.addCSourceFile(.{
-        .file = b.path("src/binds/window/window.c"),
+    const files: [1][]const u8 = .{
+        "window/window.c"
+    };
+    exe.addCSourceFiles(.{
+        .files = files[0..],
+        .root = b.path("src/binds/c")
     });
     exe.addIncludePath(b.path("include"));
+    exe.addIncludePath(b.path("src/binds/c"));
     exe.linkLibC();
     exe.addLibraryPath(b.path("lib"));
     exe.linkSystemLibrary("glfw3");
