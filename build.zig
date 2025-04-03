@@ -8,8 +8,9 @@ pub fn build(b: *std.Build) void {
             .target = b.graph.host
         }
     );
-    const files: [1][]const u8 = .{
-        "window/window.c"
+    const files: [2][]const u8 = .{
+        "window/window.c",
+        "instance/instance.c"
     };
     exe.addCSourceFiles(.{
         .files = files[0..],
@@ -19,6 +20,7 @@ pub fn build(b: *std.Build) void {
     exe.addIncludePath(b.path("src/binds/c"));
     exe.linkLibC();
     exe.addLibraryPath(b.path("lib"));
+    // note this is macos only right now
     exe.linkSystemLibrary("glfw3");
     exe.linkSystemLibrary("vulkan");
     exe.linkFramework("Cocoa");
