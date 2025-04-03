@@ -1,9 +1,8 @@
 #include "vulkan/vulkan_core.h"
 #include <GLFW/glfw3.h>
-#include <stdint.h>
 #include <vulkan/vulkan.h>
 
-VkResult init(VkInstance* instance) {
+VkResult instanceInit(VkInstance* instance) {
 	VkApplicationInfo app_info = {
 		.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 		.pApplicationName = "Hello Triangle",
@@ -25,4 +24,8 @@ VkResult init(VkInstance* instance) {
 	};
 
 	return vkCreateInstance(&create_info, NULL, instance);
+}
+
+void instanceDeinit(VkInstance instance) {
+	vkDestroyInstance(instance, NULL);
 }
