@@ -12,7 +12,13 @@ pub const errors = error{
 pub const instance = struct {
     inst: vk.VkInstance,
 
-    pub fn init(i: *instance, alloc: std.mem.Allocator, 
+    pub fn init(alloc: std.mem.Allocator, app_name: []const u8, version: [3]u32, extensions: [][]const u8, flags: i32, validations: [][]const u8) !instance {
+        var inst: instance = undefined;
+        try inst._init(alloc, app_name, version, extensions, flags, validations);
+        return inst;
+    }
+
+    fn _init(i: *instance, alloc: std.mem.Allocator, 
             app_name: []const u8, version: [3]u32, 
             required_extensions: [][]const u8, flags: i32,
             validation_layers: [][]const u8) !void {
