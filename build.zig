@@ -8,9 +8,10 @@ pub fn build(b: *std.Build) void {
             .target = b.graph.host
         }
     );
-    const files: [2][]const u8 = .{
+    const files: [3][]const u8 = .{
         "window/window.c",
-        "instance/instance.c"
+        "instance/instance.c",
+        "device/device.c"
     };
     exe.addCSourceFiles(.{
         .files = files[0..],
