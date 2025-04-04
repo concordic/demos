@@ -2,7 +2,9 @@ const std = @import("std");
 const window = @import("binds/window.zig");
 const instance = @import("binds/instance.zig");
 const device = @import("binds/device.zig");
+const surface = @import("binds/surface.zig");
 const queue = @import("binds/queue.zig");
+const swapchain = @import("binds/swapchain.zig");
 const vulkan = @import("binds/c/vulkan.zig");
 
 fn update() bool {
@@ -22,8 +24,9 @@ pub fn main() !void {
     var validations: [1][]const u8 = .{
         "VK_LAYER_KHRONOS_validation"
     };
-    var dev_extensions: [1][]const u8 = .{
+    var dev_extensions: [2][]const u8 = .{
         "VK_KHR_portability_subset",
+        "VK_KHR_swapchain",
     };
 
     // create window and defer free
@@ -70,6 +73,9 @@ pub fn main() !void {
     );
     defer dev.deinit();
 
+    var sc = try swapchain.swapchain.init(allocator, &dev, &sf, &win);
+    defer sc.deinit();
+    
     // start window update loop
     win.update(window.wrap(&update));
 }
