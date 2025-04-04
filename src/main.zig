@@ -26,6 +26,10 @@ pub fn main() !void {
         "VK_KHR_portability_subset",
     };
 
+    // create window and defer free
+    var win = try window.window.init(allocator, 800, 600, "Vulkan");
+    defer win.deinit();
+
     // create instance and defer free
     var inst = try instance.instance.init(allocator, 
         "Hello World", .{1, 0, 0}, 
@@ -34,30 +38,37 @@ pub fn main() !void {
     );
     defer inst.deinit();
 
-    var features: [1]queue.CheckFeaturePointer = .{
+    // create surface and defer free
+    var sf = try surface.surface.init(allocator, &inst, &win);
+    defer sf.deinit();
+
+    // create logical device and defer free
+    var features: [2]queue.CheckFeaturePointer = .{
         queue.wrap(struct {
-            pub fn graphics(_: vulkan.VkPhysicalDevice, queues: []vulkan.VkQueueFamilyProperties, idx: u32) bool { 
+            pub fn graphics(_: vulkan.VkPhysicalDevice, queues: []vulkan.VkQueueFamilyProperties, idx: u32, _: *anyopaque) bool { 
                 return queues[idx].queueFlags & vulkan.VK_QUEUE_GRAPHICS_BIT != 0;
             }
         }.graphics),
-   //     queue.wrap(struct {
-   //         pub fn surface(physdev: vulkan.VkPhysicalDevice, _: []vulkan.VkQueueFamilyProperties, idx: u32) bool {
-   //             var support: bool = false;
-   //             vulkan.vkGetPhysicalDeviceSurfaceSupportKHR(physdev, idx, surface, &support);
-   //         }
-   //     })
+        queue.wrap(struct {
+            pub fn surface(physdev: vulkan.VkPhysicalDevice, _: []vulkan.VkQueueFamilyProperties, idx: u32, data: *anyopaque) bool {
+                var support: vulkan.VkBool32 = vulkan.VK_FALSE;
+                const surf: vulkan.VkSurfaceKHR = @ptrCast(@alignCast(data));
+                _ = vulkan.vkGetPhysicalDeviceSurfaceSupportKHR(physdev, @intCast(idx), surf, &support);
+                return support == vulkan.VK_TRUE;
+            }
+        }.surface)
     };
-    // create logical device and defer free
-    var dev = try device.device.init(allocator, inst.inst, 
+    var datas: [2]*anyopaque = .{
+        undefined,
+        @ptrCast(sf.surf)
+    };
+    var dev = try device.device.init(allocator, &inst, 
         features[0..], 
+        datas[0..],
         dev_extensions[0..], 
-        validations[0..]
+        validations[0..],
     );
     defer dev.deinit();
-    
-    // create window and defer free
-    var win = try window.window.init(allocator, 800, 600, "Vulkan");
-    defer win.deinit();
 
     // start window update loop
     win.update(window.wrap(&update));

@@ -21,7 +21,6 @@ VkPhysicalDevice devicePhysInit(VkInstance instance) {
 	return VK_NULL_HANDLE;
 }
 
-// TODO: change int* features to (bool (*features)(VkPhysicalDevice, VkQueueFamilyProperties, int, int))*
 VkResult deviceInit(VkDevice* device, VkPhysicalDevice physdev, VkInstance instance, VkDeviceQueueCreateInfo* queue_creates, int num_queues, const char** extensions, int num_extensions, const char** layers, int num_layers) {
 	// VkDeviceQueueCreateInfo queue_creates[num_features];
 	VkPhysicalDeviceFeatures* dev_features = malloc(sizeof(VkPhysicalDeviceFeatures));

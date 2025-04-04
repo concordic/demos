@@ -1,5 +1,6 @@
 const vk = @import("../vulkan.zig");
 const queue = @import("../queue/queue.zig");
+const instance = @import("../instance/instance.zig");
 const std = @import("std");
 
 
@@ -16,13 +17,13 @@ pub const device = struct {
     phys_dev: vk.VkPhysicalDevice,
     queues: queue.queue,
 
-    pub fn init(alloc: std.mem.Allocator, inst: vk.VkInstance, features: []queue.CheckFeaturePointer, extensions: [][]const u8, validation_layers: [][]const u8) !device {
+    pub fn init(alloc: std.mem.Allocator, inst: *instance.instance, features: []queue.CheckFeaturePointer, datas: []*anyopaque, extensions: [][]const u8, validation_layers: [][]const u8) !device {
         var dev: device = undefined;
-        try dev._init(alloc, inst, features, extensions, validation_layers);
+        try dev._init(alloc, inst, features, datas, extensions, validation_layers);
         return dev;
     }
 
-    fn _init(d: *device, alloc: std.mem.Allocator, inst: vk.VkInstance, features: []queue.CheckFeaturePointer, extensions: [][]const u8, validation_layers: [][]const u8) !void {
+    fn _init(d: *device, alloc: std.mem.Allocator, inst: *instance.instance, features: []queue.CheckFeaturePointer, datas: []*anyopaque, extensions: [][]const u8, validation_layers: [][]const u8) !void {
         var z_extensions = try alloc.alloc([*]u8, extensions.len);
         for (extensions, 0..) |extension, idx| {
             const name = try std.fmt.allocPrintZ(alloc, "{s}", .{extension});
@@ -33,9 +34,9 @@ pub const device = struct {
             const name = try std.fmt.allocPrintZ(alloc, "{s}", .{layer});
             z_validations[idx] = name.ptr;
         }
-        d.phys_dev = devicePhysInit(inst);
-        d.queues = try queue.queue.init(d.phys_dev, inst, features);
-        const result = deviceInit(&d.dev, d.phys_dev, inst, 
+        d.phys_dev = devicePhysInit(inst.inst);
+        d.queues = try queue.queue.init(d, inst, features, datas);
+        const result = deviceInit(&d.dev, d.phys_dev, inst.inst, 
             d.queues.create_info.ptr, @intCast(d.queues.create_info.len), 
             z_extensions.ptr, @intCast(z_extensions.len), 
             z_validations.ptr, @intCast(z_validations.len)
@@ -43,7 +44,7 @@ pub const device = struct {
         if (result != vk.VK_SUCCESS) {
             return errors.deviceCreationFailed;
         }
-        try d.queues.get(alloc, d.dev);
+        try d.queues.get(alloc, d);
     }
 
     pub fn deinit(d: *device) void {
