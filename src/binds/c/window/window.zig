@@ -15,8 +15,14 @@ pub fn wrap(comptime func: *const fn () bool) *const fn () callconv(.c) c_int {
 
 pub const window = struct {
     obj: *glfw.GLFWwindow,
-    
-    pub fn init(w: *window, alloc: std.mem.Allocator, width: u32, height: u32, name: []const u8) !void {
+   
+    pub fn init(alloc: std.mem.Allocator, width: u32, height: u32, name: []const u8) !window {
+        var win: window = undefined;
+        try win._init(alloc, width, height, name);
+        return win;
+    }
+
+    fn _init(w: *window, alloc: std.mem.Allocator, width: u32, height: u32, name: []const u8) !void {
         const z_name = try std.fmt.allocPrintZ(alloc, "{s}", .{name});
         w.obj = windowInit(@intCast(width), @intCast(height), z_name.ptr);
     }
