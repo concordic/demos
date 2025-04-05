@@ -1,28 +1,40 @@
 #include "vulkan/vulkan_core.h"
+#include <limits.h>
 #include <vulkan/vulkan.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
-// TODO: turn this into a function pointer callback
-bool _is_device_suitable(VkPhysicalDevice dev) {
-	return true;
-}
+typedef struct physdevInitResult {
+	VkPhysicalDevice physical_device;
+} physdevInitResult;
 
-VkPhysicalDevice devicePhysInit(VkInstance instance) {
+physdevInitResult physdevInit(const VkInstance* instance, int (*suitability_check)(VkPhysicalDevice)) {
 	uint32_t num_devices = 0;
-	vkEnumeratePhysicalDevices(instance, &num_devices, NULL);
+	vkEnumeratePhysicalDevices(*instance, &num_devices, NULL);
 	VkPhysicalDevice devs[num_devices];
-	vkEnumeratePhysicalDevices(instance, &num_devices, devs);
+	vkEnumeratePhysicalDevices(*instance, &num_devices, devs);
+	int most_suitable = INT_MIN;
+	VkPhysicalDevice best_device = VK_NULL_HANDLE;
 	for (int i = 0; i < num_devices; i++) {
-		if (_is_device_suitable(devs[i])) {
-			return devs[i];
+		if (suitability_check(devs[i]) > most_suitable) {
+			best_device = devs[i];
 		}
 	}
-	return VK_NULL_HANDLE;
+	physdevInitResult result;
+	result.physical_device = best_device;
+	return result;
 }
 
-VkResult deviceInit(VkDevice* device, VkPhysicalDevice physdev, VkInstance instance, VkDeviceQueueCreateInfo* queue_creates, int num_queues, const char** extensions, int num_extensions, const char** layers, int num_layers) {
-	// VkDeviceQueueCreateInfo queue_creates[num_features];
+typedef struct deviceInitResult {
+	VkResult result;
+	VkDevice device;
+} deviceInitResult;
+
+deviceInitResult deviceInit(const VkPhysicalDevice* physdev, 
+		VkDeviceQueueCreateInfo* queue_creates, int num_queues, 
+		const char** extensions, int num_extensions, 
+		const char** layers, int num_layers) {
+	deviceInitResult result;
 	VkPhysicalDeviceFeatures* dev_features = malloc(sizeof(VkPhysicalDeviceFeatures));
 	VkDeviceCreateInfo dev_create_info = {
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -34,10 +46,11 @@ VkResult deviceInit(VkDevice* device, VkPhysicalDevice physdev, VkInstance insta
 		.ppEnabledLayerNames = layers,
 		.enabledLayerCount = num_layers,
 	};
-	VkResult result = vkCreateDevice(physdev, &dev_create_info, NULL, device);
+	result.result = vkCreateDevice(*physdev, &dev_create_info, NULL, &result.device);
+	free(dev_features);
 	return result;
 }
 
-void deviceDeinit(VkDevice device) {
-	vkDestroyDevice(device, NULL);
+void deviceDeinit(deviceInitResult* result) {
+	vkDestroyDevice(result->device, NULL);
 }

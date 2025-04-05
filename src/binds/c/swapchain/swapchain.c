@@ -129,7 +129,7 @@ void swapchainDeinit(VkSwapchainKHR swapchain, VkDevice dev, VkImage* images, Vk
 	for (int i = 0; i < num; i++) {
 		vkDestroyImageView(dev, views[i], NULL);
 	}
+	vkDestroySwapchainKHR(dev, swapchain, NULL);
 	free(images);
 	free(views);
-	vkDestroySwapchainKHR(dev, swapchain, NULL);
 }

@@ -42,32 +42,29 @@ pub fn main() !void {
     defer inst.deinit();
 
     // create surface and defer free
-    var sf = try surface.surface.init(allocator, &inst, &win);
+    var sf = try surface.surface.init(&inst, &win);
     defer sf.deinit();
 
     // create logical device and defer free
-    var features: [2]queue.CheckFeaturePointer = .{
-        queue.wrap(struct {
-            pub fn graphics(_: vulkan.VkPhysicalDevice, queues: []vulkan.VkQueueFamilyProperties, idx: u32, _: *anyopaque) bool { 
+    var features: [2]queue.FeatureCallback = .{
+        queue.wrap(
+            struct { pub fn graphics(_: vulkan.VkPhysicalDevice, queues: []vulkan.VkQueueFamilyProperties, idx: u32, _: *anyopaque) bool { 
                 return queues[idx].queueFlags & vulkan.VK_QUEUE_GRAPHICS_BIT != 0;
-            }
-        }.graphics),
-        queue.wrap(struct {
-            pub fn surface(physdev: vulkan.VkPhysicalDevice, _: []vulkan.VkQueueFamilyProperties, idx: u32, data: *anyopaque) bool {
+            }}.graphics, 
+            undefined
+        ),
+        queue.wrap(
+            struct { pub fn surface(physdev: vulkan.VkPhysicalDevice, _: []vulkan.VkQueueFamilyProperties, idx: u32, data: *anyopaque) bool {
                 var support: vulkan.VkBool32 = vulkan.VK_FALSE;
                 const surf: vulkan.VkSurfaceKHR = @ptrCast(@alignCast(data));
                 _ = vulkan.vkGetPhysicalDeviceSurfaceSupportKHR(physdev, @intCast(idx), surf, &support);
                 return support == vulkan.VK_TRUE;
-            }
-        }.surface)
-    };
-    var datas: [2]*anyopaque = .{
-        undefined,
-        @ptrCast(sf.surf)
+            }}.surface, 
+            @ptrCast(sf.surf)
+        )
     };
     var dev = try device.device.init(allocator, &inst, 
         features[0..], 
-        datas[0..],
         dev_extensions[0..], 
         validations[0..],
     );

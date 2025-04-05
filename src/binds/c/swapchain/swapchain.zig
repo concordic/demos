@@ -32,7 +32,7 @@ pub const swapchain = struct {
    
     pub fn init(alloc: std.mem.Allocator, dev: *device.device, surf: *surface.surface, win: *window.window) !swapchain {
         var sc: swapchain = undefined;
-        try sc._init(alloc, dev.phys_dev, dev.dev, surf.surf, win.obj, dev.queues.create_info);
+        try sc._init(alloc, dev.physical_device.physical_device, dev.dev, surf.surf, win.obj, dev.queues.create_info);
         return sc;
     }
 

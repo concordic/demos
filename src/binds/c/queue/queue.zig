@@ -4,40 +4,65 @@ const instance = @import("../instance/instance.zig");
 const std = @import("std");
 
 
-pub const CheckFeaturePointer = *const fn (vk.VkPhysicalDevice, [*c]vk.VkQueueFamilyProperties, c_int, c_int, *anyopaque) callconv(.c) bool;
-extern fn queueCreatesInit(vk.VkPhysicalDevice, vk.VkInstance, [*c]CheckFeaturePointer, c_int, [*c]c_int, [*c]*anyopaque) [*c]vk.VkDeviceQueueCreateInfo;
-extern fn queueDeviceInit([*c]vk.VkQueue, vk.VkDevice, [*c]vk.VkDeviceQueueCreateInfo, c_int) void;
+pub const FeatureCallback = extern struct {
+    callback: *const fn (vk.VkPhysicalDevice, [*c]vk.VkQueueFamilyProperties, c_int, c_int, *anyopaque) callconv(.c) bool,
+    args: *anyopaque
+};
+const queueCreatesInitResult = extern struct {
+    create_infos: [*c]vk.VkDeviceQueueCreateInfo,
+    priorities: [*c]f32,
+    len: u32,
+};
+const queueDeviceInitResult = extern struct {
+    queues: [*c]vk.VkQueue,
+    len: u32,
+};
+extern fn queueCreatesInit(*const vk.VkPhysicalDevice, [*c]FeatureCallback, c_int) queueCreatesInitResult;
+extern fn queueDeviceInit(*const vk.VkDevice, *const queueCreatesInitResult) queueDeviceInitResult;
+extern fn queueDeinit(*const queueCreatesInitResult, *const queueDeviceInitResult) void;
 
 
-pub fn wrap(comptime func: *const fn (vk.VkPhysicalDevice, []vk.VkQueueFamilyProperties, u32, *anyopaque) bool) CheckFeaturePointer {
-    return struct {
+pub fn wrap(comptime func: *const fn (vk.VkPhysicalDevice, []vk.VkQueueFamilyProperties, u32, *anyopaque) bool, args: *anyopaque) FeatureCallback {
+    var callback: FeatureCallback = undefined;
+    callback.args = args;
+    callback.callback = struct {
         pub fn inner(physdev: vk.VkPhysicalDevice, props: [*c]vk.VkQueueFamilyProperties, num_props: c_int, idx: c_int, data: *anyopaque) callconv(.c) bool {
             var arr: []vk.VkQueueFamilyProperties = undefined;
             arr.ptr = props;
             arr.len = @intCast(num_props);
             return func(physdev, arr, @intCast(idx), data);
-        }
+}
     }.inner;
+    return callback;
 }
 
 pub const queue = struct {
     queues: []vk.VkQueue,
     create_info: []vk.VkDeviceQueueCreateInfo,
+    init_result: queueCreatesInitResult,
+    get_result: queueDeviceInitResult,
 
-    pub fn init(dev: *device.device, inst: *instance.instance, check_features: []CheckFeaturePointer, datas: []*anyopaque) !queue {
+    pub fn init(dev: *device.device, check_features: []FeatureCallback) !queue {
         var q: queue = undefined;
-        try q._pre_dev_init(dev.phys_dev, inst.inst, check_features, datas);
+        try q._pre_dev_init(dev.physical_device.physical_device,  check_features);
         return q;
     }
 
-    fn _pre_dev_init(q: *queue, physdev: vk.VkPhysicalDevice, inst: vk.VkInstance, check_features: []CheckFeaturePointer, datas: []*anyopaque) !void {
-        var len: i32 = undefined;
-        q.create_info.ptr = queueCreatesInit(physdev, inst, check_features.ptr, @intCast(check_features.len), &len, datas.ptr);
-        q.create_info.len = @intCast(len);
+    fn _pre_dev_init(q: *queue, physdev: vk.VkPhysicalDevice, check_features: []FeatureCallback) !void {
+        const result = queueCreatesInit(&physdev, check_features.ptr, @intCast(check_features.len));
+        q.create_info.ptr = result.create_infos;
+        q.create_info.len = result.len;
+        q.init_result = result;
     }
     
-    pub fn get(q: *queue, alloc: std.mem.Allocator, dev: *device.device) !void {
-        q.queues = try alloc.alloc(vk.VkQueue, q.create_info.len);
-        queueDeviceInit(q.queues.ptr, dev.dev, q.create_info.ptr, @intCast(q.create_info.len));
+    pub fn get(q: *queue, dev: *device.device) !void {
+        const result = queueDeviceInit(&dev.dev, &q.init_result);
+        q.queues.ptr = result.queues;
+        q.queues.len = result.len;
+        q.get_result = result;
+    }
+
+    pub fn deinit(q: *queue) void {
+        queueDeinit(&q.init_result, &q.get_result);
     }
 };

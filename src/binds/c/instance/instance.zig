@@ -1,9 +1,16 @@
 const glfw = @import("../glfw.zig");
 const vk = @import("../vulkan.zig");
 const std = @import("std");
+const types = @import("../types.zig");
 
-extern fn instanceInit(*vk.VkInstance, [*c]const u8, c_int, c_int, c_int, [*c]const [*c]const u8, c_int, c_int, [*c]const [*c]const u8, c_int) vk.VkResult;
-extern fn instanceDeinit(vk.VkInstance) void;
+const c_str = [*c]const u8;
+const str = []const u8;
+const instanceInitResult = extern struct {
+    result: vk.VkResult, 
+    instance: vk.VkInstance
+};
+extern fn instanceInit(c_str, c_int, c_int, c_int, [*c]const c_str, c_int, c_int, [*c]const c_str, c_int) instanceInitResult;
+extern fn instanceDeinit(*const instanceInitResult) void;
 
 pub const errors = error{
     instanceCreationFailed
@@ -11,39 +18,39 @@ pub const errors = error{
 
 pub const instance = struct {
     inst: vk.VkInstance,
+    result: instanceInitResult,
 
-    pub fn init(alloc: std.mem.Allocator, app_name: []const u8, version: [3]u32, extensions: [][]const u8, flags: i32, validations: [][]const u8) !instance {
+    pub fn init(alloc: std.mem.Allocator, app_name: str, version: [3]u32, extensions: []str, flags: i32, validations: []str) !instance {
         var inst: instance = undefined;
         try inst._init(alloc, app_name, version, extensions, flags, validations);
         return inst;
     }
 
-    fn _init(i: *instance, alloc: std.mem.Allocator, 
-            app_name: []const u8, version: [3]u32, 
-            required_extensions: [][]const u8, flags: i32,
-            validation_layers: [][]const u8) !void {
-        const z_app_name = try std.fmt.allocPrintZ(alloc, "{s}", .{app_name});
-        var z_extensions = try alloc.alloc([*]u8, required_extensions.len);
-        for (required_extensions, 0..) |extension, idx| {
-            const name = try std.fmt.allocPrintZ(alloc, "{s}", .{extension});
-            z_extensions[idx] = name.ptr;
-        }
-        var z_validations = try alloc.alloc([*]u8, validation_layers.len);
-        for (validation_layers, 0..) |layer, idx| {
-            const name = try std.fmt.allocPrintZ(alloc, "{s}", .{layer});
-            z_validations[idx] = name.ptr;
-        }
-        const result = instanceInit(&i.inst, 
+    fn _init(self: *instance, alloc: std.mem.Allocator, 
+            app_name: str, version: [3]u32, 
+            required_extensions: []str, flags: i32,
+            validation_layers: []str) !void {
+
+        const z_app_name = try types.CStr.init(alloc, app_name);
+        defer z_app_name.deinit();
+        const z_extensions = try types.CStrArray.init(alloc, required_extensions);
+        defer z_extensions.deinit();
+        const z_validations = try types.CStrArray.init(alloc, validation_layers);
+        defer z_validations.deinit();
+
+        const result = instanceInit( 
             z_app_name.ptr, @intCast(version[0]), @intCast(version[1]), @intCast(version[2]), 
             z_extensions.ptr, @intCast(z_extensions.len), flags,
-            z_validations.ptr, @intCast(z_validations.len));
-        alloc.free(z_extensions);
-        if (result != vk.VK_SUCCESS) {
+            z_validations.ptr, @intCast(z_validations.len)
+        );
+        if (result.result != vk.VK_SUCCESS) {
             return errors.instanceCreationFailed;
         }
+        self.inst = result.instance;
+        self.result = result;
     }
 
-    pub fn deinit(i: *instance) void {
-        instanceDeinit(i.inst);
+    pub fn deinit(self: *instance) void {
+        instanceDeinit(&self.result);
     }
 };

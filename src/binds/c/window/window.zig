@@ -1,4 +1,5 @@
 const glfw = @import("../glfw.zig");
+const types = @import("../types.zig");
 const std = @import("std");
 
 extern fn windowInit(width: c_int, height: c_int, name: [*c]const u8) *glfw.GLFWwindow;
@@ -23,7 +24,8 @@ pub const window = struct {
     }
 
     fn _init(w: *window, alloc: std.mem.Allocator, width: u32, height: u32, name: []const u8) !void {
-        const z_name = try std.fmt.allocPrintZ(alloc, "{s}", .{name});
+        const z_name = try types.CStr.init(alloc, name);
+        defer z_name.deinit();
         w.obj = windowInit(@intCast(width), @intCast(height), z_name.ptr);
     }
 
