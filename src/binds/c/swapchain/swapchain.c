@@ -54,7 +54,15 @@ VkExtent2D _choose_extent(VkSurfaceCapabilitiesKHR capabilities, GLFWwindow* win
 }
 
 
-VkResult swapchainInit(VkSwapchainKHR* swapchain, VkPhysicalDevice physdev, VkDevice dev, VkSurfaceKHR surface, GLFWwindow* window, uint32_t* queue_indices, uint32_t num_queues) {
+struct swapChainResult {
+	VkResult res;
+	VkImage* images;
+	VkImageView* views;
+	uint32_t len;
+};
+
+
+struct swapChainResult swapchainInit(VkSwapchainKHR* swapchain, VkSwapchainCreateInfoKHR* create, VkPhysicalDevice physdev, VkDevice dev, VkSurfaceKHR surface, GLFWwindow* window, uint32_t* queue_indices, uint32_t num_queues) {
 	struct swapChainSupport supp = _get_swapchain_support(physdev, surface);
 	VkSurfaceFormatKHR format = _choose_surface_format(supp.formats, supp.num_formats);
 	VkPresentModeKHR mode = _choose_present_mode(supp.modes, supp.num_modes);
@@ -80,11 +88,48 @@ VkResult swapchainInit(VkSwapchainKHR* swapchain, VkPhysicalDevice physdev, VkDe
 		.clipped = VK_FALSE,
 		.oldSwapchain = VK_NULL_HANDLE
 	};
-
-	VkResult result = vkCreateSwapchainKHR(dev, &create_info, NULL, swapchain);
-	return result;
+	struct swapChainResult ret;
+	ret.res = vkCreateSwapchainKHR(dev, &create_info, NULL, swapchain);
+	vkGetSwapchainImagesKHR(dev, *swapchain, &ret.len, NULL);
+	ret.images = malloc(ret.len * sizeof(VkImage));
+	vkGetSwapchainImagesKHR(dev, *swapchain, &ret.len, ret.images);
+	*create = create_info;
+	ret.views = malloc(ret.len * sizeof(VkImageView));
+	for (int i = 0; i < ret.len; i++) {
+		VkImageViewCreateInfo create_info = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = (ret.images)[i],
+			.viewType = VK_IMAGE_VIEW_TYPE_2D,
+			.format = format.format,
+			.components = {
+				.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.a = VK_COMPONENT_SWIZZLE_IDENTITY
+			},
+			.subresourceRange = {
+				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1
+			}
+		};
+		VkResult res = vkCreateImageView(dev, &create_info, NULL, &(ret.views[i]));
+		if (res != VK_SUCCESS) {
+			ret.res = res;
+			break;
+		}
+	}
+	return ret;
 }
 
-void swapchainDeinit(VkSwapchainKHR swapchain, VkDevice dev) {
+
+void swapchainDeinit(VkSwapchainKHR swapchain, VkDevice dev, VkImage* images, VkImageView* views, uint32_t num) {
+	for (int i = 0; i < num; i++) {
+		vkDestroyImageView(dev, views[i], NULL);
+	}
+	free(images);
+	free(views);
 	vkDestroySwapchainKHR(dev, swapchain, NULL);
 }

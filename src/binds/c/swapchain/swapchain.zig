@@ -7,8 +7,15 @@ const queue = @import("../queue/queue.zig");
 const std = @import("std");
 
 
-extern fn swapchainInit(*vk.VkSwapchainKHR, vk.VkPhysicalDevice, vk.VkDevice, vk.VkSurfaceKHR, *glfw.GLFWwindow, [*c]u32, u32) vk.VkResult;
-extern fn swapchainDeinit(vk.VkSwapchainKHR, vk.VkDevice) void;
+const swapChainResult = extern struct {
+    res: vk.VkResult,
+    images: [*c]vk.VkImage,
+    views: [*c]vk.VkImageView,
+    len: u32
+};
+
+extern fn swapchainInit(*vk.VkSwapchainKHR, *vk.VkSwapchainCreateInfoKHR, vk.VkPhysicalDevice, vk.VkDevice, vk.VkSurfaceKHR, *glfw.GLFWwindow, [*c]u32, u32) swapChainResult;
+extern fn swapchainDeinit(vk.VkSwapchainKHR, vk.VkDevice, [*c]vk.VkImage, [*c]vk.VkImageView, u32) void;
 
 
 pub const errors = error{
@@ -19,6 +26,9 @@ pub const errors = error{
 pub const swapchain = struct {
     sc: vk.VkSwapchainKHR,
     dev: vk.VkDevice,
+    create_info: vk.VkSwapchainCreateInfoKHR,
+    images: []vk.VkImage,
+    views: []vk.VkImageView,
    
     pub fn init(alloc: std.mem.Allocator, dev: *device.device, surf: *surface.surface, win: *window.window) !swapchain {
         var sc: swapchain = undefined;
@@ -31,12 +41,16 @@ pub const swapchain = struct {
         for (queues, 0..) |q, idx| {
             indices[idx] = q.queueFamilyIndex;
         }
-        const result = swapchainInit(&s.sc, physdev, dev, surf, win, indices.ptr, @intCast(indices.len));
-        if (result != vk.VK_SUCCESS) return errors.swapchainInitFailed;
+        const result = swapchainInit(&s.sc, &s.create_info, physdev, dev, surf, win, indices.ptr, @intCast(indices.len));
+        if (result.res != vk.VK_SUCCESS) return errors.swapchainInitFailed;
+        s.images.ptr = result.images;
+        s.views.ptr = result.views;
+        s.images.len = result.len;
+        s.views.len = result.len;
         s.dev = dev;
     }
 
     pub fn deinit(s: *swapchain) void {
-        swapchainDeinit(s.sc, s.dev);
+        swapchainDeinit(s.sc, s.dev, s.images.ptr, s.views.ptr, @intCast(s.views.len));
     }
 };
