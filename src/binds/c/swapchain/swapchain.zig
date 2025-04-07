@@ -45,6 +45,7 @@ pub const swapchain = struct {
             indices[idx] = q.queueFamilyIndex;
         }
         const result = swapchainInit(physdev, dev, surf, win, indices.ptr, @intCast(indices.len));
+        alloc.free(indices);
         if (result.res != vk.VK_SUCCESS) return errors.swapchainInitFailed;
         s.create_info = result.create_info;
         s.sc = result.swapchain;

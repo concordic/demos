@@ -26,9 +26,10 @@ void shaderModuleDeinit(VkDevice dev, shaderModuleInitResult result) {
 typedef struct pipelineInitResult {
 	VkResult result;
 	VkPipelineLayout layout;
+	VkPipeline pipeline;
 } pipelineInitResult;
 
-pipelineInitResult pipelineInit(VkShaderModule vertex, VkShaderModule fragment, VkExtent2D extent, VkFormat format, VkDevice dev) {
+pipelineInitResult pipelineInit(VkShaderModule vertex, VkShaderModule fragment, VkExtent2D extent, VkFormat format, VkDevice dev, VkRenderPass renderpass) {
 	VkPipelineShaderStageCreateInfo vert_create_info = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 		.module = vertex,
@@ -41,6 +42,7 @@ pipelineInitResult pipelineInit(VkShaderModule vertex, VkShaderModule fragment, 
 		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
 		.pName = "main"
 	};
+	VkPipelineShaderStageCreateInfo stages[2] = { vert_create_info, frag_create_info };
 	VkDynamicState dynamic_states[2] = {
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR,
@@ -135,10 +137,29 @@ pipelineInitResult pipelineInit(VkShaderModule vertex, VkShaderModule fragment, 
 	};
 	pipelineInitResult result;
 	result.result = vkCreatePipelineLayout(dev, &layout_create_info, NULL, &result.layout);
+	if (result.result != VK_SUCCESS) return result;
+	VkGraphicsPipelineCreateInfo create_info = {
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.stageCount = 2,
+		.pStages = stages,
+		.pVertexInputState = &vert_in_create_info,
+		.pInputAssemblyState = &in_asm_create_info,
+		.pViewportState = &viewport_create_info,
+		.pRasterizationState = &rasterize_create_info,
+		.pMultisampleState = &multisample_create_info,
+		.pColorBlendState = &color_state,
+		.pDynamicState = &state_create_info,
+		.layout = result.layout,
+		.renderPass = renderpass,
+		.subpass = 0,
+		.basePipelineHandle = VK_NULL_HANDLE
+	};
+	result.result = vkCreateGraphicsPipelines(dev, VK_NULL_HANDLE, 1, &create_info, NULL, &result.pipeline);
 	return result;
 }
 
-void pipelineDeinit(VkDevice dev, VkPipelineLayout layout) {
+void pipelineDeinit(VkDevice dev, VkPipelineLayout layout, VkPipeline pipeline) {
+	vkDestroyPipeline(dev, pipeline, NULL);
 	vkDestroyPipelineLayout(dev, layout, NULL);
 }
 
@@ -170,12 +191,23 @@ renderpassInitResult renderpassInit(VkDevice dev, VkFormat format) {
 		.pColorAttachments = &attach_ref
 	};
 
+	VkSubpassDependency dependency = {
+		.srcSubpass = VK_SUBPASS_EXTERNAL,
+		.dstSubpass = 0,
+		.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		.srcAccessMask = 0,
+		.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+	};
+
 	VkRenderPassCreateInfo render_create_info = {
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
 		.attachmentCount = 1,
 		.pAttachments = &attach,
 		.subpassCount = 1,
-		.pSubpasses = &subpass
+		.pSubpasses = &subpass,
+		.dependencyCount = 1,
+		.pDependencies = &dependency
 	};
 	renderpassInitResult result;
 	result.result = vkCreateRenderPass(dev, &render_create_info, NULL, &result.renderpass);

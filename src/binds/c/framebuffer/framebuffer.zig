@@ -11,6 +11,11 @@ extern fn framebufferInit([*c]vk.VkImageView, c_int, vk.VkDevice, vk.VkRenderPas
 extern fn framebufferDeinit(vk.VkDevice, framebufferInitResult) void;
 
 
+pub const errors = error{
+    framebufferInitializationFailed
+};
+
+
 pub const framebuffer = struct {
     framebuffers: []vk.VkFramebuffer,
     result: framebufferInitResult,
@@ -24,6 +29,7 @@ pub const framebuffer = struct {
 
     fn _init(self: *framebuffer, views: []vk.VkImageView, dev: vk.VkDevice, renderpass: vk.VkRenderPass, extent: vk.VkExtent2D) !void {
         const result = framebufferInit(views.ptr, @intCast(views.len), dev, renderpass, extent);
+        if (result.result != vk.VK_SUCCESS) return errors.framebufferInitializationFailed;
         self.framebuffers.ptr = result.framebuffers;
         self.framebuffers.len = result.len;
         self.result = result;

@@ -14,11 +14,11 @@ GLFWwindow* windowInit(int width, int height, const char* name) {
 	return window;
 }
 
-void windowUpdate(GLFWwindow* window, int (*loop)()) {
+void windowUpdate(GLFWwindow* window, int (*loop)(void*), void* data) {
 	assert(window);
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
-		int result = loop();
+		int result = loop(data);
 		if (result != 0) break;
 	}
 }

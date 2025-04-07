@@ -9,6 +9,11 @@ extern fn renderpassInit(vk.VkDevice, vk.VkFormat) renderpassInitResult;
 extern fn renderpassDeinit(vk.VkDevice, vk.VkRenderPass) void;
 
 
+pub const errors = error {
+    renderpassInitializationFailed
+};
+
+
 pub const renderpass = struct {
     renderpass: vk.VkRenderPass,
     device: vk.VkDevice,
@@ -21,6 +26,9 @@ pub const renderpass = struct {
    
     fn _init(self: *renderpass, dev: vk.VkDevice, format: vk.VkFormat) !void {
         const result = renderpassInit(dev, format);
+        if (result.result != vk.VK_SUCCESS) {
+            return errors.renderpassInitializationFailed;
+        }
         self.device = dev;
         self.renderpass = result.renderpass;
     }

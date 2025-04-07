@@ -11,6 +11,8 @@ pub const FeatureCallback = extern struct {
 const queueCreatesInitResult = extern struct {
     create_infos: [*c]vk.VkDeviceQueueCreateInfo,
     priorities: [*c]f32,
+    indices: [*c]u32,
+    info_map: [*c]u32,
     len: u32,
 };
 const queueDeviceInitResult = extern struct {
@@ -39,6 +41,8 @@ pub fn wrap(comptime func: *const fn (vk.VkPhysicalDevice, []vk.VkQueueFamilyPro
 pub const queue = struct {
     queues: []vk.VkQueue,
     create_info: []vk.VkDeviceQueueCreateInfo,
+    indicies: []u32,
+    info_map: []u32, // the nth element of this array tells you which index of queues and create_info that family is
     init_result: queueCreatesInitResult,
     get_result: queueDeviceInitResult,
 
@@ -52,6 +56,10 @@ pub const queue = struct {
         const result = queueCreatesInit(&physdev, check_features.ptr, @intCast(check_features.len));
         q.create_info.ptr = result.create_infos;
         q.create_info.len = result.len;
+        q.indicies.ptr = result.indices;
+        q.indicies.len = check_features.len;
+        q.info_map.ptr = result.info_map;
+        q.info_map.len = check_features.len;
         q.init_result = result;
     }
     
