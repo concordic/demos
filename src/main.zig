@@ -5,6 +5,8 @@ const device = @import("binds/device.zig");
 const surface = @import("binds/surface.zig");
 const queue = @import("binds/queue.zig");
 const swapchain = @import("binds/swapchain.zig");
+const shader = @import("binds/shader.zig");
+const framebuffer = @import("binds/framebuffer.zig");
 const vulkan = @import("binds/c/vulkan.zig");
 
 fn update() bool {
@@ -72,6 +74,15 @@ pub fn main() !void {
 
     var sc = try swapchain.swapchain.init(allocator, &dev, &sf, &win);
     defer sc.deinit();
+
+    var rpass = try shader.renderpass.init(dev.dev, sc.create_info.imageFormat);
+    defer rpass.deinit();
+
+    var pipe = try shader.pipeline.init(allocator, @embedFile("shaders/vert.spv"), @embedFile("shaders/frag.spv"), dev.dev, sc.create_info.imageExtent, sc.create_info.imageFormat);
+    defer pipe.deinit();
+
+    var fb = try framebuffer.framebuffer.init(sc.views, dev.dev, rpass.renderpass, sc.create_info.imageExtent);
+    defer fb.deinit();
     
     // start window update loop
     win.update(window.wrap(&update));
