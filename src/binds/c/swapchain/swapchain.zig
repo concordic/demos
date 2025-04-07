@@ -7,15 +7,17 @@ const queue = @import("../queue/queue.zig");
 const std = @import("std");
 
 
-const swapChainResult = extern struct {
+const swapchainInitResult = extern struct {
     res: vk.VkResult,
+    swapchain: vk.VkSwapchainKHR,
+    create_info: vk.VkSwapchainCreateInfoKHR,
     images: [*c]vk.VkImage,
     views: [*c]vk.VkImageView,
     len: u32
 };
 
-extern fn swapchainInit(*vk.VkSwapchainKHR, *vk.VkSwapchainCreateInfoKHR, vk.VkPhysicalDevice, vk.VkDevice, vk.VkSurfaceKHR, *glfw.GLFWwindow, [*c]u32, u32) swapChainResult;
-extern fn swapchainDeinit(vk.VkSwapchainKHR, vk.VkDevice, [*c]vk.VkImage, [*c]vk.VkImageView, u32) void;
+extern fn swapchainInit(vk.VkPhysicalDevice, vk.VkDevice, vk.VkSurfaceKHR, *glfw.GLFWwindow, [*c]u32, u32) swapchainInitResult;
+extern fn swapchainDeinit(*vk.VkDevice, *swapchainInitResult) void;
 
 
 pub const errors = error{
@@ -29,6 +31,7 @@ pub const swapchain = struct {
     create_info: vk.VkSwapchainCreateInfoKHR,
     images: []vk.VkImage,
     views: []vk.VkImageView,
+    result: swapchainInitResult,
    
     pub fn init(alloc: std.mem.Allocator, dev: *device.device, surf: *surface.surface, win: *window.window) !swapchain {
         var sc: swapchain = undefined;
@@ -41,16 +44,19 @@ pub const swapchain = struct {
         for (queues, 0..) |q, idx| {
             indices[idx] = q.queueFamilyIndex;
         }
-        const result = swapchainInit(&s.sc, &s.create_info, physdev, dev, surf, win, indices.ptr, @intCast(indices.len));
+        const result = swapchainInit(physdev, dev, surf, win, indices.ptr, @intCast(indices.len));
         if (result.res != vk.VK_SUCCESS) return errors.swapchainInitFailed;
+        s.create_info = result.create_info;
+        s.sc = result.swapchain;
         s.images.ptr = result.images;
         s.views.ptr = result.views;
         s.images.len = result.len;
         s.views.len = result.len;
         s.dev = dev;
+        s.result = result;
     }
 
     pub fn deinit(s: *swapchain) void {
-        swapchainDeinit(s.sc, s.dev, s.images.ptr, s.views.ptr, @intCast(s.views.len));
+        swapchainDeinit(&s.dev, &s.result);
     }
 };

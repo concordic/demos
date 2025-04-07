@@ -26,7 +26,7 @@ struct swapChainSupport _get_swapchain_support(VkPhysicalDevice device, VkSurfac
 	return details;
 }
 
-VkSurfaceFormatKHR _choose_surface_format(VkSurfaceFormatKHR* formats, uint32_t num_formats) {
+static VkSurfaceFormatKHR _choose_surface_format(VkSurfaceFormatKHR* formats, uint32_t num_formats) {
 	for (int i = 0; i < num_formats; i++) {
 		if (formats[i].format == VK_FORMAT_B8G8R8A8_SRGB && formats[i].colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
 			return formats[i];
@@ -35,11 +35,11 @@ VkSurfaceFormatKHR _choose_surface_format(VkSurfaceFormatKHR* formats, uint32_t 
 	return formats[0];
 }
 
-VkPresentModeKHR _choose_present_mode(VkPresentModeKHR* modes, uint32_t num_modes) {
+static VkPresentModeKHR _choose_present_mode(VkPresentModeKHR* modes, uint32_t num_modes) {
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D _choose_extent(VkSurfaceCapabilitiesKHR capabilities, GLFWwindow* window) {
+static VkExtent2D _choose_extent(VkSurfaceCapabilitiesKHR capabilities, GLFWwindow* window) {
 	int width, height;
 	glfwGetFramebufferSize(window, &width, &height);
 	if (width > capabilities.maxImageExtent.width) width = capabilities.maxImageExtent.width;
@@ -54,20 +54,24 @@ VkExtent2D _choose_extent(VkSurfaceCapabilitiesKHR capabilities, GLFWwindow* win
 }
 
 
-struct swapChainResult {
+typedef struct swapchainInitResult {
 	VkResult res;
+	VkSwapchainKHR swapchain;
+	VkSwapchainCreateInfoKHR create_info;
 	VkImage* images;
 	VkImageView* views;
 	uint32_t len;
-};
+} swapchainInitResult;
 
 
-struct swapChainResult swapchainInit(VkSwapchainKHR* swapchain, VkSwapchainCreateInfoKHR* create, VkPhysicalDevice physdev, VkDevice dev, VkSurfaceKHR surface, GLFWwindow* window, uint32_t* queue_indices, uint32_t num_queues) {
+swapchainInitResult swapchainInit(VkPhysicalDevice physdev, VkDevice dev, VkSurfaceKHR surface, GLFWwindow* window, uint32_t* queue_indices, uint32_t num_queues) {
 	struct swapChainSupport supp = _get_swapchain_support(physdev, surface);
 	VkSurfaceFormatKHR format = _choose_surface_format(supp.formats, supp.num_formats);
 	VkPresentModeKHR mode = _choose_present_mode(supp.modes, supp.num_modes);
 	VkExtent2D extent = _choose_extent(supp.capabilities, window);
 	uint32_t imagec = supp.capabilities.minImageCount + 1;
+	free(supp.formats);
+	free(supp.modes);
 	if (supp.capabilities.maxImageCount > 0 && imagec > supp.capabilities.maxImageCount) imagec = supp.capabilities.maxImageCount;
 
 	VkSwapchainCreateInfoKHR create_info = {
@@ -88,12 +92,12 @@ struct swapChainResult swapchainInit(VkSwapchainKHR* swapchain, VkSwapchainCreat
 		.clipped = VK_FALSE,
 		.oldSwapchain = VK_NULL_HANDLE
 	};
-	struct swapChainResult ret;
-	ret.res = vkCreateSwapchainKHR(dev, &create_info, NULL, swapchain);
-	vkGetSwapchainImagesKHR(dev, *swapchain, &ret.len, NULL);
+	swapchainInitResult ret;
+	ret.res = vkCreateSwapchainKHR(dev, &create_info, NULL, &ret.swapchain);
+	vkGetSwapchainImagesKHR(dev, ret.swapchain, &ret.len, NULL);
 	ret.images = malloc(ret.len * sizeof(VkImage));
-	vkGetSwapchainImagesKHR(dev, *swapchain, &ret.len, ret.images);
-	*create = create_info;
+	vkGetSwapchainImagesKHR(dev, ret.swapchain, &ret.len, ret.images);
+	ret.create_info = create_info;
 	ret.views = malloc(ret.len * sizeof(VkImageView));
 	for (int i = 0; i < ret.len; i++) {
 		VkImageViewCreateInfo create_info = {
@@ -125,11 +129,11 @@ struct swapChainResult swapchainInit(VkSwapchainKHR* swapchain, VkSwapchainCreat
 }
 
 
-void swapchainDeinit(VkSwapchainKHR swapchain, VkDevice dev, VkImage* images, VkImageView* views, uint32_t num) {
-	for (int i = 0; i < num; i++) {
-		vkDestroyImageView(dev, views[i], NULL);
+void swapchainDeinit(VkDevice* dev, swapchainInitResult* result) {
+	for (int i = 0; i < result->len; i++) {
+		vkDestroyImageView(*dev, result->views[i], NULL);
 	}
-	vkDestroySwapchainKHR(dev, swapchain, NULL);
-	free(images);
-	free(views);
+	vkDestroySwapchainKHR(*dev, result->swapchain, NULL);
+	free(result->images);
+	free(result->views);
 }

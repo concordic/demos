@@ -31,7 +31,7 @@ typedef struct deviceInitResult {
 } deviceInitResult;
 
 deviceInitResult deviceInit(const VkPhysicalDevice* physdev, 
-		VkDeviceQueueCreateInfo* queue_creates, int num_queues, 
+		const VkDeviceQueueCreateInfo* queue_creates, int num_queues, 
 		const char** extensions, int num_extensions, 
 		const char** layers, int num_layers) {
 	deviceInitResult result;

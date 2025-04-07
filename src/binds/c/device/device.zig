@@ -9,7 +9,7 @@ const deviceInitResult = extern struct {
     result: vk.VkResult,
     device: vk.VkDevice,
 };
-extern fn deviceInit(*vk.VkPhysicalDevice, [*c]vk.VkDeviceQueueCreateInfo, c_int, [*c]const [*c]const u8, c_int, [*c]const [*c]const u8, c_int) deviceInitResult;
+extern fn deviceInit(*const vk.VkPhysicalDevice, [*c]vk.VkDeviceQueueCreateInfo, c_int, [*c]const [*c]const u8, c_int, [*c]const [*c]const u8, c_int) deviceInitResult;
 extern fn deviceDeinit(*deviceInitResult) void;
 
 pub const errors = error{
